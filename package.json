@@ -1,0 +1,27 @@
+{
+  "name": "manifold-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsx index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "columnify": "^1.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "peer": "^1.0.2",
+    "socket.io": "^4.7.4"
+  },
+  "devDependencies": {
+    "@types/columnify": "^1.5.4",
+    "@types/express": "^4.17.21",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

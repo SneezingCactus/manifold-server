@@ -1,0 +1,25 @@
+{
+    "name": "@types/columnify",
+    "version": "1.5.4",
+    "description": "TypeScript definitions for columnify",
+    "homepage": "https://github.com/DefinitelyTyped/DefinitelyTyped/tree/master/types/columnify",
+    "license": "MIT",
+    "contributors": [
+        {
+            "name": "Gary King",
+            "githubUsername": "garyking",
+            "url": "https://github.com/garyking"
+        }
+    ],
+    "main": "",
+    "types": "index.d.ts",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/DefinitelyTyped/DefinitelyTyped.git",
+        "directory": "types/columnify"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "typesPublisherContentHash": "1705192eb1b67160679f9dd3a86fb7d1169eeac6205ac0c32c5c7382b87eb9ee",
+    "typeScriptVersion": "4.5"
+}
