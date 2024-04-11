@@ -24,7 +24,7 @@ export interface HostActionRestrictions {
   noLockingTeams: boolean;
   /**
    * If true, the host won't be able to change the room's current game mode.
-   * 
+   *
    * This restriction does not affect GMMaker game modes.
    */
   noChangingMode: boolean;
@@ -39,45 +39,45 @@ export interface HostActionRestrictions {
 }
 
 export interface RatelimitRestrictions {
-    /**
-     * Ratelimit for joining the server.
-     */
-    joining: ServerConfigRatelimit,
-    /**
-     * Ratelimit for sending chat messages. This ratelimit also applies
-     * to map suggestions.
-     */
-    chatting: ServerConfigRatelimit,
-    /**
-     * Ratelimit for hitting the "ready" button.
-     */
-    readying: ServerConfigRatelimit,
-    /**
-     * Ratelimit for changing teams. This ratelimit also applies to
-     * locking or toggling teams.
-     */
-    changingTeams: ServerConfigRatelimit,
-    /**
-     * Ratelimit for changing the room's game mode. This ratelimit does
-     * not apply to GMMaker game modes.
-     */
-    changingMode: ServerConfigRatelimit,
-    /**
-     * Ratelimit for changing the room's map.
-     */
-    changingMap: ServerConfigRatelimit,
-    /**
-     * Ratelimit for "Game starts in (number)" messages.
-     */
-    startGameCountdown: ServerConfigRatelimit,
-    /**
-     * Ratelimit for starting and ending a game.
-     */
-    startingEndingGame: ServerConfigRatelimit,
-    /**
-     * Ratelimit for transferring host privileges.
-     */
-    transferringHost: ServerConfigRatelimit,
+  /**
+   * Ratelimit for joining the server.
+   */
+  joining: ServerConfigRatelimit;
+  /**
+   * Ratelimit for sending chat messages. This ratelimit also applies
+   * to map suggestions.
+   */
+  chatting: ServerConfigRatelimit;
+  /**
+   * Ratelimit for hitting the "ready" button.
+   */
+  readying: ServerConfigRatelimit;
+  /**
+   * Ratelimit for changing teams. This ratelimit also applies to
+   * locking or toggling teams.
+   */
+  changingTeams: ServerConfigRatelimit;
+  /**
+   * Ratelimit for changing the room's game mode. This ratelimit does
+   * not apply to GMMaker game modes.
+   */
+  changingMode: ServerConfigRatelimit;
+  /**
+   * Ratelimit for changing the room's map.
+   */
+  changingMap: ServerConfigRatelimit;
+  /**
+   * Ratelimit for "Game starts in (number)" messages.
+   */
+  startGameCountdown: ServerConfigRatelimit;
+  /**
+   * Ratelimit for starting and ending a game.
+   */
+  startingEndingGame: ServerConfigRatelimit;
+  /**
+   * Ratelimit for transferring host privileges.
+   */
+  transferringHost: ServerConfigRatelimit;
 }
 
 export interface ConfigRestrictions {
@@ -87,11 +87,11 @@ export interface ConfigRestrictions {
 
   /**
    * This section determines how certain actions must be ratelimited.
-   * 
+   *
    * Each ratelimit has 3 settings: `amount`, `timeframe`, and `restore`.
-   * 
+   *
    * To put it simply: If a user performs an action `amount` times within
-   * `timeframe` seconds, that user will not be able to perform that action 
+   * `timeframe` seconds, that user will not be able to perform that action
    * until `restore` seconds have passed.
    */
   ratelimits: RatelimitRestrictions;
@@ -134,7 +134,8 @@ export type Config = {
   autoAssignHost: boolean;
 
   /**
-   * This object contains a set of rules ,,,,,//TODO
+   * This object contains a set of rules that affect and regulate all players in the room (including the host), as
+   * well as players trying to join the room.
    */
   restrictions: ConfigRestrictions;
 };

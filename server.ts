@@ -59,9 +59,7 @@ export default class ManifoldServer {
 
     // gather ban list
     if (fs.existsSync('./banlist.json')) {
-      this.banList = JSON.parse(
-        fs.readFileSync('./banlist.json', { encoding: 'utf8' }),
-      );
+      this.banList = JSON.parse(fs.readFileSync('./banlist.json', { encoding: 'utf8' }));
     } else {
       this.banList = { addresses: [], usernames: [] };
     }
@@ -144,17 +142,12 @@ export default class ManifoldServer {
         }
 
         // username length check
-        if (
-          playerData.userName.length > config.restrictions.usernames.maxLength
-        ) {
+        if (playerData.userName.length > config.restrictions.usernames.maxLength) {
           socket.emit(OUT.ERROR_MESSAGE, 'username_too_long');
           return;
         }
 
-        if (
-          config.restrictions.usernames.noEmptyNames &&
-          !playerData.userName
-        ) {
+        if (config.restrictions.usernames.noEmptyNames && !playerData.userName) {
           socket.emit(OUT.ERROR_MESSAGE, 'username_empty');
           return;
         }
@@ -200,11 +193,7 @@ export default class ManifoldServer {
         socket.emit(
           OUT.SERVER_INFORM,
           socket.data.bonkId,
-          this.playerInfo[this.hostId]
-            ? this.hostId
-            : config.autoAssignHost
-            ? socket.data.bonkId
-            : -1,
+          this.playerInfo[this.hostId] ? this.hostId : config.autoAssignHost ? socket.data.bonkId : -1,
           this.playerInfo,
           this.gameStartTime,
           this.gameSettings.tl,
@@ -241,15 +230,9 @@ export default class ManifoldServer {
     });
   }
 
-  processRatelimit(
-    socket: socketIO.Socket,
-    actionType: keyof RatelimitRestrictions,
-  ) {
+  processRatelimit(socket: socketIO.Socket, actionType: keyof RatelimitRestrictions) {
     const socketAddress = socket.handshake.address;
-    const ratelimitOptions =
-      this.config.restrictions.ratelimits[
-        actionType as keyof RatelimitRestrictions
-      ];
+    const ratelimitOptions = this.config.restrictions.ratelimits[actionType as keyof RatelimitRestrictions];
 
     this.ratelimits[socketAddress] ??= {};
     const socketRatelimits = this.ratelimits[socketAddress];
@@ -311,9 +294,7 @@ export default class ManifoldServer {
       this.playerInfo[socket.data.bonkId].team = data.targetTeam;
 
       // send team change packet to everyone
-      this.io
-        .to('main')
-        .emit(OUT.CHANGE_TEAM, socket.data.bonkId, data.targetTeam);
+      this.io.to('main').emit(OUT.CHANGE_TEAM, socket.data.bonkId, data.targetTeam);
     });
 
     // send chat message
@@ -321,9 +302,7 @@ export default class ManifoldServer {
       if (this.processRatelimit(socket, 'chatting')) return;
 
       // send chat message to everyone
-      this.io
-        .to('main')
-        .emit(OUT.CHAT_MESSAGE, socket.data.bonkId, data.message);
+      this.io.to('main').emit(OUT.CHAT_MESSAGE, socket.data.bonkId, data.message);
     });
 
     // set own ready state
@@ -347,11 +326,7 @@ export default class ManifoldServer {
       );
 
       // send map request packet to host (contains the actual map)
-      this.playerSockets[this.hostId].emit(
-        OUT.MAP_REQUEST_HOST,
-        data.m,
-        socket.data.bonkId,
-      );
+      this.playerSockets[this.hostId].emit(OUT.MAP_REQUEST_HOST, data.m, socket.data.bonkId);
     });
 
     // send friend request
@@ -390,9 +365,7 @@ export default class ManifoldServer {
       if (socket.data.bonkId !== this.hostId) return;
 
       if (!data.kickonly) {
-        this.banList.addresses.push(
-          this.playerSockets[data.banshortid].handshake.address,
-        );
+        this.banList.addresses.push(this.playerSockets[data.banshortid].handshake.address);
         this.banList.usernames.push(this.playerInfo[data.banshortid].userName);
 
         fs.writeFileSync('./banlist.json', JSON.stringify(this.banList), {
@@ -480,9 +453,7 @@ export default class ManifoldServer {
       this.hostId = data.id;
 
       // send host change packet to everyone
-      this.io
-        .to('main')
-        .emit(OUT.TRANSFER_HOST, { oldHost: oldHostId, newHost: this.hostId });
+      this.io.to('main').emit(OUT.TRANSFER_HOST, { oldHost: oldHostId, newHost: this.hostId });
     });
 
     // send countdown "starting in" message
@@ -520,9 +491,7 @@ export default class ManifoldServer {
       this.gameSettings = data.gs;
       this.gameStartTime = Date.now();
 
-      this.io
-        .to('main')
-        .emit(OUT.START_GAME, this.gameStartTime, data.is, data.gs);
+      this.io.to('main').emit(OUT.START_GAME, this.gameStartTime, data.is, data.gs);
     });
 
     // host end game
@@ -546,9 +515,7 @@ export default class ManifoldServer {
       this.playerAmount--;
 
       // this is the amount of game ticks (bonk runs at 30tps) at which the player left
-      const tickCount = Math.round(
-        (Date.now() - this.gameStartTime) / (1000 / 30),
-      );
+      const tickCount = Math.round((Date.now() - this.gameStartTime) / (1000 / 30));
 
       if (this.config.autoAssignHost && socket.data.bonkId == this.hostId) {
         let newHostId = -1;
@@ -561,9 +528,7 @@ export default class ManifoldServer {
         }
 
         this.hostId = newHostId;
-        this.io
-          .to('main')
-          .emit(OUT.HOST_LEFT, socket.data.bonkId, newHostId, tickCount);
+        this.io.to('main').emit(OUT.HOST_LEFT, socket.data.bonkId, newHostId, tickCount);
       } else {
         if (socket.data.bonkId == this.hostId) this.hostId = -1;
         this.io.to('main').emit(OUT.PLAYER_LEFT, socket.data.bonkId, tickCount);

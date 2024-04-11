@@ -14,7 +14,7 @@ const availableCommands: Record<string, TerminalCommand> = {
   host: {
     usage: 'host [username or id]',
     description: 'Give host privileges to someone in the room.',
-    callback: function(cmd, server) {
+    callback: function (cmd, server) {
       let id = -1;
 
       if (!/[^0-9]+/.test(cmd[1]) && server.playerSockets[parseInt(cmd[1])]) {
@@ -22,7 +22,7 @@ const availableCommands: Record<string, TerminalCommand> = {
       } else {
         for (let i = 0; i < server.playerInfo.length; i++) {
           if (!server.playerInfo[i]) continue;
-          
+
           if (server.playerInfo[i].userName == cmd[1]) {
             id = i;
             break;
@@ -38,7 +38,7 @@ const availableCommands: Record<string, TerminalCommand> = {
       server.hostId = id;
 
       // send host change packet to everyone
-      server.io.to('main').emit(OUT.TRANSFER_HOST, {oldHost: -1, newHost: server.hostId});
+      server.io.to('main').emit(OUT.TRANSFER_HOST, { oldHost: -1, newHost: server.hostId });
 
       console.log(`${server.playerInfo[id].userName} (id ${id}) is now the room host.`);
     },
@@ -60,20 +60,18 @@ const availableCommands: Record<string, TerminalCommand> = {
       fs.writeFileSync('./banlist.json', JSON.stringify(server.banList), {
         encoding: 'utf8',
       });
-    }
+    },
   },
   players: {
     usage: 'players',
     description: 'Show a list of all the players in the room.',
     callback(cmd, server) {
-      const teamNames = [
-        'Spectating',
-        'Free For All',
-        'Red',
-        'Blue',
-        'Green',
-        'Yellow',
-      ]
+      if (server.playerAmount == 0) {
+        console.log("There isn't anyone connected to the server!");
+        return;
+      }
+
+      const teamNames = ['Spectating', 'Free For All', 'Red', 'Blue', 'Green', 'Yellow'];
 
       const playerList = [];
 
@@ -90,30 +88,33 @@ const availableCommands: Record<string, TerminalCommand> = {
         });
       }
 
-      console.log(columnify(playerList, {
-        columnSplitter: '   ',
-        maxWidth: 20,
-      }));
+      console.log(
+        columnify(playerList, {
+          columnSplitter: '   ',
+          maxWidth: 20,
+        }),
+      );
     },
   },
   close: {
     usage: 'close',
     description: 'Close the server.',
-    callback: function() {
+    callback: function () {
+      console.log('Closing...');
       process.exit(0);
     },
   },
   help: {
     usage: 'help',
     description: 'Show this list of commands.',
-    callback: function() {
+    callback: function () {
       for (const command in availableCommands) {
         console.log('');
         console.log(availableCommands[command].usage);
         console.log(availableCommands[command].description);
       }
-    }
-  }
+    },
+  },
 };
 
 export default class ManifoldTerminal {
@@ -130,39 +131,41 @@ export default class ManifoldTerminal {
   }
 
   async start() {
-    console.log([
-      `| Manifold Server v${require('./package.json').version}`,
-      `| Live at port ${this.server.config.port}`,
-      '|',
-      '| Type "help" to show a list of commands.',
-      '',
-    ].join('\n'));
-  
+    console.log(
+      [
+        `| Manifold Server v${require('./package.json').version}`,
+        `| Live at port ${this.server.config.port}`,
+        '|',
+        '| Type "help" to show a list of commands.',
+        '',
+      ].join('\n'),
+    );
+
     while (true) {
-      const userInput = await new Promise<string>(resolve => {
+      const userInput = await new Promise<string>((resolve) => {
         this.readlineInterface.question('> ', resolve);
       });
-  
+
       const cmd = this.parseCommand(userInput);
-  
+
       if (availableCommands[cmd[0]]) {
         availableCommands[cmd[0]].callback(cmd, this.server);
       } else {
         console.log(`${cmd[0]} is not a valid command.`);
       }
-  
+
       console.log('');
     }
   }
 
   parseCommand(cmd: string) {
     const result = [];
-  
+
     const splitBySpaces = cmd.split(' ');
-  
+
     let readingString = false;
     let theString = '';
-  
+
     for (const part of splitBySpaces) {
       if (readingString) {
         // multi-part string ending
@@ -173,7 +176,7 @@ export default class ManifoldTerminal {
           theString = '';
           continue;
         }
-  
+
         theString += part + ' ';
       } else {
         // string with no spaces
@@ -181,19 +184,19 @@ export default class ManifoldTerminal {
           result.push(part.slice(1, -1).replace('\\', ''));
           continue;
         }
-  
+
         // multi-part string started
         if (part.startsWith('"')) {
           readingString = true;
           theString += part.slice(1) + ' ';
           continue;
         }
-        
+
         // not a string nor part of a string
         result.push(part.replace('\\', ''));
       }
     }
-  
+
     return result;
-  }  
+  }
 }
