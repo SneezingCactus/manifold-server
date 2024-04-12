@@ -38,7 +38,7 @@ const config: Config = {
    * Maximum amount of players that can be in the room at the same time.
    * The max amount of players cannot be changed while the server is running.
    */
-  maxPlayers: 100,
+  maxPlayers: 12,
 
   /**
    * Controls whether the server automatically assigns a host when there
@@ -52,9 +52,9 @@ const config: Config = {
    */
   restrictions: {
     usernames: {
-      noDuplicates: false,
+      noDuplicates: true,
       noEmptyNames: true,
-      maxLength: 200,
+      maxLength: 32,
     },
 
     hostActions: {
