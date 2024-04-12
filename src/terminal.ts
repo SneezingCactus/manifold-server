@@ -133,7 +133,7 @@ export default class ManifoldTerminal {
   async start() {
     console.log(
       [
-        `| Manifold Server v${require('./package.json').version}`,
+        `| Manifold Server v${require('../package.json').version}`,
         `| Live at port ${this.server.config.port}`,
         '|',
         '| Type "help" to show a list of commands.',

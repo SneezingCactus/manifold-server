@@ -1,4 +1,4 @@
 import config from './config';
-import ManifoldServer from './server';
+import ManifoldServer from './src/server';
 
 new ManifoldServer(config);

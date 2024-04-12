@@ -1,4 +1,4 @@
-import { Config } from './types';
+import { Config } from './src/types';
 
 const config: Config = {
   /**
