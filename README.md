@@ -1,6 +1,8 @@
 ![Manifold Server banner](https://github.com/SneezingCactus/manifold-server/assets/46355725/57f20767-4796-4bf5-9cef-b4ce098215fb)
 
-This repository contains the Manifold **server application**.
+This repository contains the Manifold **server**.
+
+You can find the client mod [here](https://github.com/SneezingCactus/manifold-client).
 
 Manifold is an open-source implementation of the [bonk.io](https://bonk.io/) multiplayer servers, made to allow greater customization of the backend, whether it be by changing the server's restrictions (max players beyond 8, different username rules, prohibited host actions) or adding entire new features (multiple hosts, virtual players for map testing and mod debugging, server-side player team management).
 
