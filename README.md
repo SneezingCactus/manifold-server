@@ -21,7 +21,6 @@ Manifold is an open-source implementation of the [bonk.io](https://bonk.io/) mul
 
 ## Planned features
 
-- Manifold Client (bonk.io client mod to access Manifold servers with ease)
 - Support for ping packets
 - Add missing types for game settings and player info
 
