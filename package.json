@@ -8,7 +8,8 @@
     "start": "tsx index.ts"
   },
   "keywords": [],
-  "author": "",
+  "author": "SneezingCactus",
+  "engines": {"node": "20"},
   "license": "MIT",
   "dependencies": {
     "columnify": "^1.6.0",

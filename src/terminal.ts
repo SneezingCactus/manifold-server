@@ -3,6 +3,7 @@ import ManifoldServer from './server';
 import * as OUT from './outPacketIds';
 import fs from 'fs';
 import columnify from 'columnify';
+import { Config } from './types';
 
 interface TerminalCommand {
   usage: string;
@@ -43,6 +44,42 @@ const availableCommands: Record<string, TerminalCommand> = {
       console.log(`${server.playerInfo[id].userName} (id ${id}) is now the room host.`);
     },
   },
+  ban: {
+    usage: 'ban [username]',
+    description: 'Ban a player currently in the room.',
+    callback(cmd, server) {
+      let id = -1;
+
+      if (!/[^0-9]+/.test(cmd[1]) && server.playerSockets[parseInt(cmd[1])]) {
+        id = parseInt(cmd[1]);
+      } else {
+        for (let i = 0; i < server.playerInfo.length; i++) {
+          if (!server.playerInfo[i]) continue;
+
+          if (server.playerInfo[i].userName == cmd[1]) {
+            id = i;
+            break;
+          }
+        }
+      }
+
+      if (id == -1) {
+        console.log(`${cmd[1]} is not a valid player name or id.`);
+        return;
+      }
+
+      server.banList.addresses.push(server.playerSockets[id].handshake.address);
+      server.banList.usernames.push(server.playerInfo[id].userName);
+
+      fs.writeFileSync('./banlist.json', JSON.stringify(server.banList), {
+        encoding: 'utf8',
+      });
+
+      console.log(`${server.playerInfo[id].userName} (id ${id}) has been banned from the server.`);
+
+      server.playerSockets[id].disconnect();
+    },
+  },
   unban: {
     usage: 'unban [username]',
     description: 'Unban a player.',
@@ -54,8 +91,8 @@ const availableCommands: Record<string, TerminalCommand> = {
         return;
       }
 
-      server.banList.usernames = server.banList.usernames.splice(index, 1);
-      server.banList.addresses = server.banList.addresses.splice(index, 1);
+      server.banList.usernames.splice(index, 1);
+      server.banList.addresses.splice(index, 1);
 
       fs.writeFileSync('./banlist.json', JSON.stringify(server.banList), {
         encoding: 'utf8',
@@ -94,6 +131,29 @@ const availableCommands: Record<string, TerminalCommand> = {
           maxWidth: 20,
         }),
       );
+    },
+  },
+  roomname: {
+    usage: 'roomname [new name]',
+    description:
+      "Change the room's name. The new name is not permanent and will change back to roomNameOnStartup when the server is restarted. Remember to use quotes if the room name you want to use has spaces.",
+    callback(cmd, server) {
+      server.roomName = cmd[1];
+      console.log(`The room name is now "${cmd[1]}".`);
+    },
+  },
+  roompass: {
+    usage: 'roompass [new password, leave blank to clear the password]',
+    description:
+      "Change the room's name. The new password is not permanent and will change back to roomPasswordOnStartup when the server is restarted. Remember to use quotes if the password you want to use has spaces.",
+    callback(cmd, server) {
+      if (cmd[1]) {
+        server.password = cmd[1];
+        console.log(`The room password is now "${cmd[1]}".`);
+      } else {
+        server.password = null;
+        console.log(`The room no longer has a password.`);
+      }
     },
   },
   close: {

@@ -10,14 +10,14 @@ const config: Config = {
    * Room name used by the server upon startup. The room name can later be
    * changed through the console while the server is running.
    */
-  defaultRoomName: 'Manifold Server',
+  roomNameOnStartup: 'Manifold Server',
 
   /**
    * Password used by the server upon startup. Leave as `null` to make
    * the server start with no password. The password can later be changed
    * through the console while the server is running.
    */
-  defaultPassword: null,
+  roomPasswordOnStartup: null,
 
   /**
    * Game settings used by the server upon startup.
@@ -55,35 +55,6 @@ const config: Config = {
       noDuplicates: true,
       noEmptyNames: true,
       maxLength: 32,
-    },
-
-    hostActions: {
-      /**
-       * If true, the host won't be able to enable/disable teams.
-       */
-      noTogglingTeams: false,
-      /**
-       * If true, the host won't be able to change other players' teams.
-       */
-      noChangingTeams: false,
-      /**
-       * If true, the host won't be able to lock teams.
-       */
-      noLockingTeams: false,
-      /**
-       * If true, the host won't be able to change the room's current game mode.
-       *
-       * This restriction does not affect GMMaker game modes.
-       */
-      noChangingMode: false,
-      /**
-       * If true, the host won't be able to change the room's current map.
-       */
-      noChangingMap: false,
-      /**
-       * If true, the host won't be able to transfer their privileges to another player.
-       */
-      noTransferringHost: false,
     },
 
     /**

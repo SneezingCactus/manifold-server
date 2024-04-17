@@ -8,7 +8,7 @@ import ManifoldTerminal from './terminal';
 
 import * as IN from './inPacketIds';
 import * as OUT from './outPacketIds';
-import { BanList, Config, RatelimitRestrictions } from './types';
+import { BanList, Config, GameSettings, Player, RatelimitRestrictions } from './types';
 
 const ratelimitMessages: Record<string, string> = {
   joining: 'join_rate_limited',
@@ -27,14 +27,14 @@ export default class ManifoldServer {
 
   public terminal: ManifoldTerminal;
 
-  public playerInfo: any[]; // todo
+  public playerInfo: Player[];
   public playerSockets: socketIO.Socket[];
   public ratelimits: Record<string, Record<string, number>>;
   public banList: BanList;
 
   public hostId: number;
   public gameStartTime: number;
-  public gameSettings: any; // todo
+  public gameSettings: GameSettings;
 
   public roomName: string;
   public password: string | null;
@@ -51,8 +51,8 @@ export default class ManifoldServer {
     this.gameStartTime = 0;
 
     this.gameSettings = this.config.defaultGameSettings;
-    this.roomName = this.config.defaultRoomName;
-    this.password = this.config.defaultPassword;
+    this.roomName = this.config.roomNameOnStartup;
+    this.password = this.config.roomPasswordOnStartup;
     this.playerAmount = 0;
 
     this.terminal = new ManifoldTerminal(this);
