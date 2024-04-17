@@ -9,12 +9,15 @@
   },
   "keywords": [],
   "author": "SneezingCactus",
-  "engines": {"node": "20"},
+  "engines": {
+    "node": "20"
+  },
   "license": "MIT",
   "dependencies": {
     "columnify": "^1.6.0",
     "cors": "^2.8.5",
     "express": "^4.18.2",
+    "moment": "^2.30.1",
     "socket.io": "^4.7.4"
   },
   "devDependencies": {

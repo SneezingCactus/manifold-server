@@ -47,6 +47,11 @@ const config: Config = {
   autoAssignHost: true,
 
   /**
+   * Timestamp format used for chatlogs.
+   */
+  timeStampFormat: 'YYYY-MM-DD hh:mm:ss UTCZ',
+
+  /**
    * This object contains a set of rules that affect and regulate all players in the room (including the host), as
    * well as players trying to join the room.
    */

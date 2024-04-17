@@ -103,6 +103,11 @@ export type Config = {
   autoAssignHost: boolean;
 
   /**
+   * Timestamp format used for chatlogs.
+   */
+  timeStampFormat: string;
+
+  /**
    * This object contains a set of rules that affect and regulate all players in the room (including the host), as
    * well as players trying to join the room.
    */
@@ -203,4 +208,10 @@ export interface Player {
    * ID remains unused.
    */
   peerId: string;
+}
+
+export interface ChatMessage {
+  username: string;
+  timestamp: number;
+  content: string;
 }

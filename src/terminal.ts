@@ -67,17 +67,10 @@ const availableCommands: Record<string, TerminalCommand> = {
         console.log(`${cmd[1]} is not a valid player name or id.`);
         return;
       }
+      
+      server.banPlayer(id);
 
-      server.banList.addresses.push(server.playerSockets[id].handshake.address);
-      server.banList.usernames.push(server.playerInfo[id].userName);
-
-      fs.writeFileSync('./banlist.json', JSON.stringify(server.banList), {
-        encoding: 'utf8',
-      });
-
-      console.log(`${server.playerInfo[id].userName} (id ${id}) has been banned from the server.`);
-
-      server.playerSockets[id].disconnect();
+      console.log('Banned.');
     },
   },
   unban: {
@@ -154,6 +147,13 @@ const availableCommands: Record<string, TerminalCommand> = {
         server.password = null;
         console.log(`The room no longer has a password.`);
       }
+    },
+  },
+  savechatlog: {
+    usage: 'savechatlog',
+    description: 'Save all chat messages sent since the last call to savechatlog into a txt file.',
+    callback(cmd, server) {
+      server.saveChatLog();
     },
   },
   close: {
