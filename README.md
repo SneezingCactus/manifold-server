@@ -19,6 +19,7 @@ Manifold is an open-source implementation of the [bonk.io](https://bonk.io/) mul
 
 - Unlimited player limit
 - Customizable server restrictions
+- Chat logs
 - Ability to unban people
 - Persistent ban list (players banned in one session remain banned in every session after it, unless unbanned)
 - Map and game settings persist as long as the server stays up (this is useful for map making because if your client crashes or you suffer an internet outage, as long as your server stays up, you can just join back and no progress will be lost)
