@@ -209,9 +209,3 @@ export interface Player {
    */
   peerId: string;
 }
-
-export interface ChatMessage {
-  username: string;
-  timestamp: number;
-  content: string;
-}

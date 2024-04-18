@@ -8,7 +8,7 @@ import ManifoldTerminal from './terminal';
 
 import * as IN from './inPacketIds';
 import * as OUT from './outPacketIds';
-import { BanList, ChatMessage, Config, GameSettings, Player, RatelimitRestrictions } from './types';
+import { BanList, Config, GameSettings, Player, RatelimitRestrictions } from './types';
 import moment from 'moment';
 
 const ratelimitMessages: Record<string, string> = {
@@ -338,11 +338,7 @@ export default class ManifoldServer {
       this.io.to('main').emit(OUT.CHAT_MESSAGE, socket.data.bonkId, data.message);
 
       // log chat message
-      this.logChatMessage([
-        this.playerInfo[socket.data.bonkId].userName,
-        ': ',
-        data.message,
-      ].join(''));
+      this.logChatMessage([this.playerInfo[socket.data.bonkId].userName, ': ', data.message].join(''));
     });
 
     // set own ready state
@@ -357,26 +353,32 @@ export default class ManifoldServer {
     socket.on(IN.MAP_REQUEST, (data) => {
       if (this.processRatelimit(socket, 'chatting')) return;
 
-      // send map request packet to everyone but the host (only contains metadata of the map)
-      this.playerSockets[this.hostId].broadcast.emit(
-        OUT.MAP_REQUEST_NON_HOST,
-        data.mapname,
-        data.mapauthor,
-        socket.data.bonkId,
-      );
+      if (this.hostId == -1) {
+        this.io.emit(OUT.MAP_REQUEST_NON_HOST, data.mapname, data.mapauthor, socket.data.bonkId);
+      } else {
+        // send map request packet to everyone but the host (only contains metadata of the map)
+        this.playerSockets[this.hostId].broadcast.emit(
+          OUT.MAP_REQUEST_NON_HOST,
+          data.mapname,
+          data.mapauthor,
+          socket.data.bonkId,
+        );
 
-      // send map request packet to host (contains the actual map)
-      this.playerSockets[this.hostId].emit(OUT.MAP_REQUEST_HOST, data.m, socket.data.bonkId);
+        // send map request packet to host (contains the actual map)
+        this.playerSockets[this.hostId].emit(OUT.MAP_REQUEST_HOST, data.m, socket.data.bonkId);
+      }
 
       // log map request
-      this.logChatMessage([
-        '* ',
-        this.playerInfo[socket.data.bonkId].userName,
-        ' has requested the map ',
-        data.mapname,
-        ' by ',
-        data.mapauthor
-      ].join(''));
+      this.logChatMessage(
+        [
+          '* ',
+          this.playerInfo[socket.data.bonkId].userName,
+          ' has requested the map ',
+          data.mapname,
+          ' by ',
+          data.mapauthor,
+        ].join(''),
+      );
     });
 
     // send friend request
@@ -574,7 +576,9 @@ export default class ManifoldServer {
         if (newHostId == -1) {
           this.logChatMessage(`* ${this.playerInfo[leavingPlayerId].userName} left the game`);
         } else {
-          this.logChatMessage(`* ${this.playerInfo[leavingPlayerId].userName} left the game and ${this.playerInfo[newHostId].userName} is now the game host`);
+          this.logChatMessage(
+            `* ${this.playerInfo[leavingPlayerId].userName} left the game and ${this.playerInfo[newHostId].userName} is now the game host`,
+          );
         }
 
         this.hostId = newHostId;

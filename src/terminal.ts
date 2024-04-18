@@ -11,27 +11,26 @@ interface TerminalCommand {
   callback: (cmd: string[], server: ManifoldServer) => void;
 }
 
+function getPlayerId(cmd: string, server: ManifoldServer) {
+  if (!/[^0-9]+/.test(cmd) && server.playerSockets[parseInt(cmd)]) {
+    return parseInt(cmd);
+  } else {
+    for (let i = 0; i < server.playerInfo.length; i++) {
+      if (server.playerInfo[i] && server.playerInfo[i].userName == cmd) return i;
+    }
+  }
+
+  return -1;
+}
+
 const availableCommands: Record<string, TerminalCommand> = {
   host: {
-    usage: 'host [username or id]',
+    usage: 'host [username or id, leave blank to make no one host]',
     description: 'Give host privileges to someone in the room.',
     callback: function (cmd, server) {
-      let id = -1;
+      const id = getPlayerId(cmd[1], server);
 
-      if (!/[^0-9]+/.test(cmd[1]) && server.playerSockets[parseInt(cmd[1])]) {
-        id = parseInt(cmd[1]);
-      } else {
-        for (let i = 0; i < server.playerInfo.length; i++) {
-          if (!server.playerInfo[i]) continue;
-
-          if (server.playerInfo[i].userName == cmd[1]) {
-            id = i;
-            break;
-          }
-        }
-      }
-
-      if (id == -1) {
+      if (cmd[1] && id == -1) {
         console.log(`${cmd[1]} is not a valid player name or id.`);
         return;
       }
@@ -41,33 +40,27 @@ const availableCommands: Record<string, TerminalCommand> = {
       // send host change packet to everyone
       server.io.to('main').emit(OUT.TRANSFER_HOST, { oldHost: -1, newHost: server.hostId });
 
-      console.log(`${server.playerInfo[id].userName} (id ${id}) is now the room host.`);
+      // log host transfer message
+      if (id == -1) {
+        server.logChatMessage('* The game no longer has a host');
+        console.log('The game no longer has a host.');
+      } else {
+        server.logChatMessage(`* ${server.playerInfo[server.hostId].userName} is now the game host`);
+        console.log(`${server.playerInfo[id].userName} (id ${id}) is now the game host.`);
+      }
     },
   },
   ban: {
     usage: 'ban [username]',
     description: 'Ban a player currently in the room.',
     callback(cmd, server) {
-      let id = -1;
-
-      if (!/[^0-9]+/.test(cmd[1]) && server.playerSockets[parseInt(cmd[1])]) {
-        id = parseInt(cmd[1]);
-      } else {
-        for (let i = 0; i < server.playerInfo.length; i++) {
-          if (!server.playerInfo[i]) continue;
-
-          if (server.playerInfo[i].userName == cmd[1]) {
-            id = i;
-            break;
-          }
-        }
-      }
+      const id = getPlayerId(cmd[1], server);
 
       if (id == -1) {
         console.log(`${cmd[1]} is not a valid player name or id.`);
         return;
       }
-      
+
       server.banPlayer(id);
 
       console.log('Banned.');
@@ -145,7 +138,7 @@ const availableCommands: Record<string, TerminalCommand> = {
         console.log(`The room password is now "${cmd[1]}".`);
       } else {
         server.password = null;
-        console.log(`The room no longer has a password.`);
+        console.log(`The room password has been cleared.`);
       }
     },
   },
