@@ -120,12 +120,12 @@ const availableCommands: Record<string, TerminalCommand> = {
     },
   },
   roomname: {
-    usage: 'roomname [new name]',
+    usage: 'roomname [new name, leave blank to reset to default]',
     description:
       "Change the room's name. The new name is not permanent and will change back to roomNameOnStartup when the server is restarted. Remember to use quotes if the room name you want to use has spaces.",
     callback(cmd, server) {
-      server.roomName = cmd[1];
-      console.log(`The room name is now "${cmd[1]}".`);
+      server.roomName = cmd[1] ? cmd[1] : server.config.roomNameOnStartup
+      console.log(`The room name is now "${server.roomName}".`);
     },
   },
   roompass: {
@@ -135,10 +135,21 @@ const availableCommands: Record<string, TerminalCommand> = {
     callback(cmd, server) {
       if (cmd[1]) {
         server.password = cmd[1];
-        console.log(`The room password is now "${cmd[1]}".`);
+        console.log(`The room password is now "${server.password}".`);
       } else {
         server.password = null;
         console.log(`The room password has been cleared.`);
+      }
+    },
+  },
+  noHostSwap: {
+    usage: 'noHostSwap [true/false]',
+    description:
+      "Change the room's no host swap. If enabled, this makes sure the room closes when the host leaves.",
+    callback(cmd, server) {
+      const arg = cmd[1].toLowerCase() 
+      if (arg === "true" || arg === "false") {
+        server.config.endRoomNoHostSwap = Boolean(cmd[1]);
       }
     },
   },
