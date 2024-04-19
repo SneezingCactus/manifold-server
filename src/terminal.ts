@@ -9,9 +9,10 @@ interface TerminalCommand {
   usage: string;
   description: string;
   callback: (cmd: string[], server: ManifoldServer) => void;
+  aliases?: string[],
 }
 
-function getPlayerId(cmd: string, server: ManifoldServer) {
+function getPlayerId(cmd: string, server: ManifoldServer): number {
   if (!/[^0-9]+/.test(cmd) && server.playerSockets[parseInt(cmd)]) {
     return parseInt(cmd);
   } else {
@@ -141,15 +142,21 @@ const availableCommands: Record<string, TerminalCommand> = {
         console.log(`The room password has been cleared.`);
       }
     },
+    aliases: ["roompassword"]
   },
   noHostSwap: {
-    usage: 'noHostSwap [true/false]',
+    usage: 'noHostSwap [on/off]',
     description:
       "Change the room's no host swap. If enabled, this makes sure the room closes when the host leaves.",
     callback(cmd, server) {
-      const arg = cmd[1].toLowerCase() 
-      if (arg === "true" || arg === "false") {
-        server.config.endRoomNoHostSwap = Boolean(cmd[1]);
+      const arg: string = cmd[1]
+      const parsedArg: boolean|undefined = ManifoldTerminal.parseCommandArgBool(arg);
+
+      if (typeof parsedArg === "boolean") {
+        server.config.endRoomNoHostSwap = parsedArg;
+        console.log(`noHostSwap is now ${arg}.`);
+      } else if (arg === undefined) {
+        console.log(`"${arg}" is not a valid argument. Please use "on" or "off", or alternatively "true" or "false".`);
       }
     },
   },
@@ -167,6 +174,7 @@ const availableCommands: Record<string, TerminalCommand> = {
       console.log('Closing...');
       process.exit(0);
     },
+    aliases: ["exit"]
   },
   help: {
     usage: 'help',
@@ -210,19 +218,38 @@ export default class ManifoldTerminal {
         this.readlineInterface.question('> ', resolve);
       });
 
-      const cmd = this.parseCommand(userInput);
+      const cmdArr = ManifoldTerminal.parseCommand(userInput);
+      const command = this.getAvailableCommand(cmdArr[0]);
 
-      if (availableCommands[cmd[0]]) {
-        availableCommands[cmd[0]].callback(cmd, this.server);
+      if (command !== undefined) {
+        command.callback(cmdArr, this.server);
       } else {
-        console.log(`${cmd[0]} is not a valid command.`);
+        console.log(`${cmdArr[0]} is not a valid command.`);
       }
 
       console.log('');
     }
   }
 
-  parseCommand(cmd: string) {
+  getAvailableCommand(cmd: string): TerminalCommand | undefined {
+    const commandKey = Object.keys(availableCommands).find(command =>
+      command === cmd || (availableCommands[command]?.aliases && availableCommands[command]?.aliases?.includes(cmd))
+    );
+    return commandKey ? availableCommands[commandKey] : undefined;
+  }
+
+  static parseCommandArgBool(arg: string): boolean|undefined {
+    const parsedArg: string|undefined = arg?.trim?.().toLowerCase?.()
+    if (parsedArg === "true" || parsedArg === "on") {
+      return true
+    }
+    if (parsedArg === "false" || parsedArg === "off") {
+      return false
+    }
+    return undefined;
+  }
+
+  static parseCommand(cmd: string): string[] {
     const result = [];
 
     const splitBySpaces = cmd.split(' ');
