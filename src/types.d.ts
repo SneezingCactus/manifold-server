@@ -103,6 +103,12 @@ export type Config = {
   autoAssignHost: boolean;
 
   /**
+   * This is quite different to autoAssignHost, if this is enabled: 
+   * It closes the room when the host leaves.
+   */
+  endRoomNoHostSwap: boolean;
+
+  /**
    * Timestamp format used for chatlogs.
    */
   timeStampFormat: string;
@@ -162,10 +168,191 @@ declare interface GameSettings {
    */
   bal: number[];
   /**
-   * Unknown.
+   * The game type.
+   * Game types are internally represented by an ID:
+   * 
+   * - 1 represents a mode where the game cycles through maps until the rounds played meet the number of maps. If a player has won, the game ends.
+   * - 2 represents a mode where a player needs to win a certain number of rounds, decided by "wl". Once the required rounds are won, the game ends.
    */
   gt: number;
 }
+
+/**
+* Skin shape ids for avatar layers
+*/
+export enum eAvatarShape { // Idealy large enums like this should be moved to another file
+  Alien1,
+  Alien2,
+  Alien3,
+  Alien4,
+  Alien5,
+  Alien6,
+  Barbedwire1,
+  Barbedwire2,
+  Barbedwire3,
+  Barbedwire4,
+  Barbedwire5,
+  Barbedwire6,
+  Circle,
+  Crescent,
+  Cross1,
+  Cross2,
+  Cross3,
+  Cross4,
+  Cross5,
+  Cross6,
+  Cross7,
+  Face1,
+  Face10,
+  Face11,
+  Face12,
+  Face13,
+  Face14,
+  Face15,
+  Face16,
+  Face17,
+  Face18,
+  Face2,
+  Face19,
+  Face20,
+  Face21,
+  Face3,
+  Face4,
+  Face5,
+  Face6,
+  Face7,
+  Face8,
+  Face9,
+  Flames1,
+  Flames10,
+  Flames2,
+  Flames3,
+  Flames4,
+  Flames5,
+  Flames6,
+  Flames7,
+  Flames8,
+  Flames9,
+  Skull1,
+  Cross,
+  Star1,
+  Triangle,
+  Grungecircle,
+  Grungeheart1,
+  Grungeheart2,
+  Grungeleaf1,
+  Grungeleaf2,
+  Grungeleaf3,
+  Skull2,
+  Shoeprint,
+  Handprint,
+  Fingerprint,
+  Print2,
+  Grungelines1,
+  Grungelines2,
+  Splat,
+  Pentagon,
+  Rectangle1,
+  Triangletall1,
+  Rectangle2,
+  Rectangle3,
+  Rectanglefat,
+  Semicircle,
+  Roundedrectangle,
+  Moon,
+  Triangleeven,
+  Triangletall2,
+  Splat1,
+  Splat2,
+  Splat3,
+  Square,
+  Star2,
+  Radioactive1,
+  World,
+  Signal,
+  Skullcross,
+  Skull3,
+  Exclamation,
+  Electricity,
+  Chain,
+  Scope1,
+  Scope2,
+  Radioactive2,
+  Biohazard,
+  Fire1,
+  Fire2,
+  Oxidiser,
+  Ball,
+  Atomic,
+  Freeze,
+  Whisp1,
+  Whisp2,
+  Whisp3,
+  Whisp4,
+  Whisp5,
+  Whisp6,
+  Whisp7,
+  Whisp8,
+  Whisp9,
+  Whisp10,
+  Whisp11
+}
+
+export interface AvatarLayer { 
+  /**
+  * The shape id
+  * 
+  * Value minimum is 1 and maximum 115 otherwise it will be reverted back to 1
+  */
+  id: eAvatarShape;
+  /**
+  * The scale of the shape 
+  * 
+  * Value minimum is -9999 and maximum 9999 otherwise it will be reverted back to 0 
+  */
+  scale: number;
+  /**
+  * The angle of the shape in degrees 
+  */
+  angle: number;
+  /**
+  * x position of the shape 
+  */
+  x: number;
+  /**
+  * y position of the shape 
+  */
+  y: number;
+  /**
+  * Whether to flip the skin horizontally (x) 
+  */
+  flipX: boolean;
+  /**
+  * Whether to flip the skin vertically (y) 
+  */
+  flipY: number;
+  /**
+  * The shape colour
+  * 
+  * Value minimum is 0 and maximum 16777215 otherwise it will be reverted back to 0 
+  */
+  color: number;
+}
+
+export interface Avatar {
+  /**
+  * The different "layers" of shapes on the skin
+  * For a skin to be usable this must not be over 15 layers
+  */
+  layers: (AvatarLayer|undefined)[];
+  /**
+  * Stands for "background colour"
+  * 
+  * The background colour of the skin
+  */
+  bc: number;
+}
+
 
 export interface Player {
   /**
@@ -194,7 +381,7 @@ export interface Player {
   /**
    * The player's avatar.
    */
-  avatar: any;
+  avatar: Avatar;
   /**
    * Indicates whether the player is marked as ready or not.
    */
