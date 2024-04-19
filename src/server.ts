@@ -270,6 +270,16 @@ export default class ManifoldServer {
     }
   }
 
+  assertPlayerIsHost(playerId: number, shouldErrormessage: boolean = true) {
+    if (playerId !== this.hostId) {
+      if (shouldErrormessage) {
+        this.playerSockets[playerId].emit(OUT.ERROR_MESSAGE, "not_hosting");
+      }
+      return false;
+    }
+    return true;
+  }
+
   logChatMessage(content: string) {
     this.chatLog += `[${moment().format(this.config.timeStampFormat)}] ${content}\n`;
   }
@@ -302,15 +312,13 @@ export default class ManifoldServer {
 
     // "inform in lobby" packet
     socket.on(IN.HOST_INFORM_IN_LOBBY, (data) => {
-      if (socket.data.bonkId !== this.hostId) return;
-
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
       this.playerSockets[data.sid].emit(OUT.HOST_INFORM_IN_LOBBY, data.gs);
     });
 
     // "inform in game" packet
     socket.on(IN.HOST_INFORM_IN_GAME, (data) => {
-      if (socket.data.bonkId !== this.hostId) return;
-
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
       this.playerSockets[data.sid].emit(OUT.HOST_INFORM_IN_GAME, data.allData);
     });
 
@@ -321,7 +329,8 @@ export default class ManifoldServer {
     // change own team
     socket.on(IN.CHANGE_OWN_TEAM, (data) => {
       if (this.processRatelimit(socket, 'changingTeams')) return;
-      if (this.gameSettings.tl && socket.data.bonkId !== this.hostId) return;
+      
+      if (this.gameSettings.tl && !this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       // change team in the player list
       this.playerInfo[socket.data.bonkId].team = data.targetTeam;
@@ -409,7 +418,7 @@ export default class ManifoldServer {
     // lock teams
     socket.on(IN.LOCK_TEAMS, (data) => {
       if (this.processRatelimit(socket, 'changingTeams')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.gameSettings.tl = data.teamLock;
 
@@ -418,7 +427,7 @@ export default class ManifoldServer {
 
     // kick/ban player
     socket.on(IN.KICK_BAN_PLAYER, (data) => {
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       if (data.kickonly) {
         this.kickPlayer(data.banshortid);
@@ -430,7 +439,7 @@ export default class ManifoldServer {
     // change mode
     socket.on(IN.CHANGE_MODE, (data) => {
       if (this.processRatelimit(socket, 'changingMode')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.gameSettings.ga = data.ga;
       this.gameSettings.mo = data.mo;
@@ -440,7 +449,7 @@ export default class ManifoldServer {
 
     // change rounds to win
     socket.on(IN.CHANGE_ROUNDS, (data) => {
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.gameSettings.wl = data.w;
 
@@ -450,7 +459,7 @@ export default class ManifoldServer {
     // change current map
     socket.on(IN.CHANGE_MAP, (data) => {
       if (this.processRatelimit(socket, 'changingMap')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.gameSettings.map = data.m;
 
@@ -460,7 +469,7 @@ export default class ManifoldServer {
     // change someone's team
     socket.on(IN.CHANGE_OTHER_TEAM, (data) => {
       if (this.processRatelimit(socket, 'changingTeams')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       // change team in the player list
       this.playerInfo[data.targetID].team = data.targetTeam;
@@ -471,7 +480,7 @@ export default class ManifoldServer {
 
     // change someone's balance (nerf/buff)
     socket.on(IN.CHANGE_BALANCE, (data) => {
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       // change balance in the game settings
       this.gameSettings.bal[data.sid] = data.bal;
@@ -482,7 +491,7 @@ export default class ManifoldServer {
 
     // enable/disable teams
     socket.on(IN.TOGGLE_TEAMS, (data) => {
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       // change team enable/disable in the game settings
       this.gameSettings.tea = data.t;
@@ -494,7 +503,7 @@ export default class ManifoldServer {
     // transfer host
     socket.on(IN.TRANSFER_HOST, (data) => {
       if (this.processRatelimit(socket, 'transferringHost')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       const oldHostId = this.hostId;
 
@@ -511,7 +520,7 @@ export default class ManifoldServer {
     // send countdown "starting in" message
     socket.on(IN.SEND_COUNTDOWN_STARTING, (data) => {
       if (this.processRatelimit(socket, 'startGameCountdown')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.io.to('main').emit(OUT.SEND_COUNTDOWN_STARTING, data.num);
     });
@@ -519,13 +528,13 @@ export default class ManifoldServer {
     // send countdown "aborted" message
     socket.on(IN.SEND_COUNTDOWN_ABORTED, () => {
       if (this.processRatelimit(socket, 'startGameCountdown')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.io.to('main').emit(OUT.SEND_COUNTDOWN_ABORTED);
     });
 
     socket.on(IN.NO_HOST_SWAP, () => { // Idealy this should be settable through console aswell
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.config.endRoomNoHostSwap = true;
     });
@@ -546,7 +555,7 @@ export default class ManifoldServer {
     // host start game
     socket.on(IN.START_GAME, (data) => {
       if (this.processRatelimit(socket, 'startingEndingGame')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.gameSettings = data.gs;
       this.gameStartTime = Date.now();
@@ -557,7 +566,7 @@ export default class ManifoldServer {
     // host end game
     socket.on(IN.RETURN_TO_LOBBY, () => {
       if (this.processRatelimit(socket, 'startingEndingGame')) return;
-      if (socket.data.bonkId !== this.hostId) return;
+      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
 
       this.io.to('main').emit(OUT.RETURN_TO_LOBBY);
     });
@@ -575,7 +584,7 @@ export default class ManifoldServer {
       // this is the amount of game ticks (bonk runs at 30tps) at which the player left
       const tickCount = Math.round((Date.now() - this.gameStartTime) / (1000 / 30));
 
-      if ((this.config.autoAssignHost || this.config.endRoomNoHostSwap) && socket.data.bonkId == this.hostId) {
+      if ((this.config.autoAssignHost || this.config.endRoomNoHostSwap) && this.assertPlayerIsHost(socket.data.bonkId, false)) {
         let newHostId = -1;
 
         if (this.config.endRoomNoHostSwap) {
@@ -583,12 +592,7 @@ export default class ManifoldServer {
           process.exit(0);
         }
 
-        for (let i = 0; i < this.playerSockets.length; i++) {
-          if (this.playerSockets[i]) {
-            newHostId = i;
-            break;
-          }
-        }
+        newHostId = this.playerSockets.findIndex(i => i);
 
         // log disconnect message
         if (newHostId == -1) {
@@ -602,7 +606,7 @@ export default class ManifoldServer {
         this.hostId = newHostId;
         this.io.to('main').emit(OUT.HOST_LEFT, socket.data.bonkId, newHostId, tickCount);
       } else {
-        if (socket.data.bonkId == this.hostId) this.hostId = -1;
+        if (this.assertPlayerIsHost(socket.data.bonkId, false)) this.hostId = -1;
 
         // log disconnect message
         this.logChatMessage(`* ${leavingPlayerName} left the game`);
