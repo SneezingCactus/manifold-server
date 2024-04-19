@@ -345,6 +345,8 @@ export default class ManifoldServer {
     socket.on(IN.SET_READY, (data) => {
       if (this.processRatelimit(socket, 'readying')) return;
 
+      this.playerInfo[socket.data.bonkId].ready = data.ready;
+
       // send ready state to everyone
       this.io.to('main').emit(OUT.SET_READY, socket.data.bonkId, data.ready);
     });
@@ -389,6 +391,8 @@ export default class ManifoldServer {
 
     // set tabbed (afk) state
     socket.on(IN.SET_TABBED, (data) => {
+      this.playerInfo[socket.data.bonkId].tabbed = data.out;
+
       // send tabbed (afk) state to everyone
       this.io.to('main').emit(OUT.SET_TABBED, socket.data.bonkId, data.out);
     });
@@ -575,7 +579,7 @@ export default class ManifoldServer {
         let newHostId = -1;
 
         if (this.config.endRoomNoHostSwap) {
-          this.logChatMessage(`* ${leavingPlayerName} left the game and closed the room."`);
+          this.logChatMessage(`* ${leavingPlayerName} left the game and closed the room."`); // (todo) we need to trigger this actual message in game instead of logging it, this is done by making the new host -1? for now we just exit the process
           process.exit(0);
         }
 
