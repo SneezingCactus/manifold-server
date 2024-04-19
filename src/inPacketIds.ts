@@ -34,6 +34,9 @@ export const TOGGLE_TEAMS = '32';
 export const TRANSFER_HOST = '34';
 export const SEND_COUNTDOWN_STARTING = '36';
 export const SEND_COUNTDOWN_ABORTED = '37';
+export const NO_HOST_SWAP = '50';
+export const CHANGE_ROOM_NAME = '52';
+export const CHANGE_ROOM_PASSWORD = '53';
 
 /* #endregion HOST ACTIONS */
 
@@ -41,6 +44,6 @@ export const SEND_COUNTDOWN_ABORTED = '37';
 
 export const SEND_INPUTS = '4';
 export const START_GAME = '5';
-export const END_GAME = '14';
+export const RETURN_TO_LOBBY = '14';
 
 /* #endregion IN-GAME ACTIONS */
