@@ -520,7 +520,15 @@ export default class ManifoldServer {
       this.io.to('main').emit(OUT.SEND_COUNTDOWN_ABORTED);
     });
 
-    // (unhandled) 50: close the room
+    socket.on(IN.NO_HOST_SWAP, () => { // Idealy this should be settable through console aswell
+      if (socket.data.bonkId !== this.hostId) return;
+
+      this.config.endRoomNoHostSwap = true;
+    });
+
+    // (unhandled) 52: CHANGE_ROOM_NAME
+
+    // (unhandled) 53: CHANGE_ROOM_PASSWORD
 
     /* #endregion HOST ACTIONS */
 
@@ -543,11 +551,11 @@ export default class ManifoldServer {
     });
 
     // host end game
-    socket.on(IN.END_GAME, () => {
+    socket.on(IN.RETURN_TO_LOBBY, () => {
       if (this.processRatelimit(socket, 'startingEndingGame')) return;
       if (socket.data.bonkId !== this.hostId) return;
 
-      this.io.to('main').emit(OUT.END_GAME);
+      this.io.to('main').emit(OUT.RETURN_TO_LOBBY);
     });
 
     // (unhandled) 41: get map votes
@@ -558,12 +566,18 @@ export default class ManifoldServer {
       if (socket.data.bonkId === undefined) return;
 
       const leavingPlayerId = socket.data.bonkId;
+      const leavingPlayerName = this.playerInfo[leavingPlayerId].userName;
 
       // this is the amount of game ticks (bonk runs at 30tps) at which the player left
       const tickCount = Math.round((Date.now() - this.gameStartTime) / (1000 / 30));
 
-      if (this.config.autoAssignHost && socket.data.bonkId == this.hostId) {
+      if ((this.config.autoAssignHost || this.config.endRoomNoHostSwap) && socket.data.bonkId == this.hostId) {
         let newHostId = -1;
+
+        if (this.config.endRoomNoHostSwap) {
+          this.logChatMessage(`* ${leavingPlayerName} left the game and closed the room."`);
+          process.exit(0);
+        }
 
         for (let i = 0; i < this.playerSockets.length; i++) {
           if (this.playerSockets[i]) {
@@ -574,10 +588,10 @@ export default class ManifoldServer {
 
         // log disconnect message
         if (newHostId == -1) {
-          this.logChatMessage(`* ${this.playerInfo[leavingPlayerId].userName} left the game`);
+          this.logChatMessage(`* ${leavingPlayerName} left the game`);
         } else {
           this.logChatMessage(
-            `* ${this.playerInfo[leavingPlayerId].userName} left the game and ${this.playerInfo[newHostId].userName} is now the game host`,
+            `* ${leavingPlayerName} left the game and ${this.playerInfo[newHostId].userName} is now the game host`,
           );
         }
 
@@ -587,7 +601,7 @@ export default class ManifoldServer {
         if (socket.data.bonkId == this.hostId) this.hostId = -1;
 
         // log disconnect message
-        this.logChatMessage(`* ${this.playerInfo[leavingPlayerId].userName} left the game`);
+        this.logChatMessage(`* ${leavingPlayerName} left the game`);
 
         this.io.to('main').emit(OUT.PLAYER_LEFT, socket.data.bonkId, tickCount);
       }
