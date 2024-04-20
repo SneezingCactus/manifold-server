@@ -47,6 +47,12 @@ const config: Config = {
   autoAssignHost: true,
 
   /**
+   * This is quite different to autoAssignHost, if this is enabled: 
+   * It closes the room when the host leaves.
+   */
+  endRoomNoHostSwap: false,
+
+  /**
    * Timestamp format used for chatlogs.
    */
   timeStampFormat: 'YYYY-MM-DD hh:mm:ss UTCZ',
