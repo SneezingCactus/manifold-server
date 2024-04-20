@@ -42,5 +42,6 @@ export const SEND_COUNTDOWN_ABORTED = '37';
 export const SEND_INPUTS = '4';
 export const START_GAME = '5';
 export const END_GAME = '14';
+export const SAVE_REPLAY = '33';
 
 /* #endregion IN-GAME ACTIONS */

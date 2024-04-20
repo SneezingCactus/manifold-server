@@ -344,6 +344,9 @@ export default class ManifoldServer {
     // set own ready state
     socket.on(IN.SET_READY, (data) => {
       if (this.processRatelimit(socket, 'readying')) return;
+      if (typeof data.ready !== 'boolean') return;
+
+      this.playerInfo[socket.data.bonkId].ready = data.ready;
 
       // send ready state to everyone
       this.io.to('main').emit(OUT.SET_READY, socket.data.bonkId, data.ready);
@@ -389,11 +392,19 @@ export default class ManifoldServer {
 
     // set tabbed (afk) state
     socket.on(IN.SET_TABBED, (data) => {
+      if (typeof data.out !== 'boolean') return;
+
+      this.playerInfo[socket.data.bonkId].tabbed = data.out;
+
       // send tabbed (afk) state to everyone
       this.io.to('main').emit(OUT.SET_TABBED, socket.data.bonkId, data.out);
     });
 
-    // (unhandled) 33: save replay to main menu
+    // save replay to main menu
+    socket.on(IN.SAVE_REPLAY, () => {
+      this.io.to('main').emit(OUT.SAVE_REPLAY, socket.data.bonkId);
+    });
+
     // (unhandled) 38: request xp increase
     // (unhandled) 39: vote map
     // (unhandled) 51: curate map
