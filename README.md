@@ -37,6 +37,5 @@ Manifold is an open-source implementation of the bonk.io multiplayer servers mad
 
 - To open the server, you can either open a terminal and enter `npm run start`, or you can run the start script file (`start.bat` on Windows, `start.sh` on Linux).
 - If you host the server on your computer, you'll be able to access it through the URL `http://localhost:{the port you're hosting the server on, 3000 by default}/`.
-- If you want people outside your network to be able to join your server, you'll have to forward the port in your router's settings, and they'll have to join with your public IP which you can get from webpages like [whatismyipaddress.com](https://whatismyipaddress.com/).
-- You can also host your server in the cloud using hosting services such as [Render](https://render.com/) and [Heroku](https://www.heroku.com/), though this is only recommended for advanced users.
+- If you want people outside your network to be able to join your server, you'll have to host your server in the cloud using hosting services such as [Render](https://render.com/) and [Heroku](https://www.heroku.com/). You can host it locally, but this is more difficult as you have to buy a domain, get SSL certificates and configure your DNS settings, so this is only recommended for advanced users.
 - Server configuration is located in `config.ts`. You can modify it with any text editor.

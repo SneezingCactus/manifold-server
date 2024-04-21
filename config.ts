@@ -7,6 +7,19 @@ const config: Config = {
   port: 3000,
 
   /**
+   * If `true`, the server will be hosted with HTTPS. This is necessary
+   * for hosting a server that is meant to be accessible outside of a local
+   * network, whether it be a server you host in your computer, or a server
+   * hosted on a cloud service that doesn't offer a built in HTTPS proxy.
+   *
+   * Using the server with HTTPS requires you to get SSL/TLS certificates
+   * for the domain you're hosting the server on, and store the key and cert
+   * files as "server-key.pem" and "server-cert.pem" in the root folder of
+   * the server.
+   */
+  useHttps: false,
+
+  /**
    * Room name used by the server upon startup. The room name can later be
    * changed through the console while the server is running.
    */
@@ -47,12 +60,6 @@ const config: Config = {
   autoAssignHost: true,
 
   /**
-   * This is quite different to autoAssignHost, if this is enabled: 
-   * It closes the room when the host leaves.
-   */
-  endRoomNoHostSwap: false,
-
-  /**
    * Timestamp format used for chatlogs.
    */
   timeStampFormat: 'YYYY-MM-DD hh:mm:ss UTCZ',
@@ -62,10 +69,56 @@ const config: Config = {
    * well as players trying to join the room.
    */
   restrictions: {
+    /**
+     * Maximum length for chat messages. Messages that go beyond this limit will be truncated.
+     */
+    maxChatMessageLength: 300,
+
+    /**
+     * Restrictions for player usernames.
+     */
     usernames: {
+      /**
+       * If `true`, players trying to join with a username that someone in the room already has will not be allowed to join.
+       */
       noDuplicates: true,
+      /**
+       * If `true`, players with completely empty usernames will not be allowed to join.
+       */
       noEmptyNames: true,
+      /**
+       * Maximum length that a player's username can have.
+       */
       maxLength: 32,
+      /**
+       * Players whose username matches this regular expression will not be allowed to join.
+       */
+      disallowRegex: /[^A-Za-z0-9_ ]/,
+    },
+
+    /**
+     * Restrictions for player levels. Keep in mind that levels can be easily spoofed as Manifold cannot check the
+     * validity of a player's level. Therefore, people may spoof their levels to bypass min/max level restrictions,
+     * show a ridiculously high number or show a piece of text in place of the level.
+     */
+    levels: {
+      /**
+       * Minimum level required to join. Only players with levels above this number will be able to join.
+       */
+      minLevel: 0,
+      /**
+       * Maximum level required to join. Only players with levels below this number will be able to join.
+       */
+      maxLevel: 999,
+      /**
+       * If `true`, it will only allow levels that contain only numbers (by making some modifications to the client,
+       * people may be able to join with levels that have text on them, which is why this setting exists)
+       */
+      onlyAllowNumbers: true,
+      /**
+       * If `true`, the level of every player in the room will be hidden, replaced with a '-'.
+       */
+      censorLevels: false,
     },
 
     /**

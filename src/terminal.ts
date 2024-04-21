@@ -9,7 +9,7 @@ interface TerminalCommand {
   usage: string;
   description: string;
   callback: (cmd: string[], server: ManifoldServer) => void;
-  aliases?: string[],
+  aliases?: string[];
 }
 
 function getPlayerId(cmd: string, server: ManifoldServer): number {
@@ -125,7 +125,7 @@ const availableCommands: Record<string, TerminalCommand> = {
     description:
       "Change the room's name. The new name is not permanent and will change back to roomNameOnStartup when the server is restarted. Remember to use quotes if the room name you want to use has spaces.",
     callback(cmd, server) {
-      server.roomName = cmd[1] ? cmd[1] : server.config.roomNameOnStartup
+      server.roomName = cmd[1] ? cmd[1] : server.config.roomNameOnStartup;
       console.log(`The room name is now "${server.roomName}".`);
     },
   },
@@ -142,23 +142,7 @@ const availableCommands: Record<string, TerminalCommand> = {
         console.log(`The room password has been cleared.`);
       }
     },
-    aliases: ["roompassword"]
-  },
-  noHostSwap: {
-    usage: 'noHostSwap [on/off]',
-    description:
-      "Change the room's no host swap. If enabled, this makes sure the room closes when the host leaves.",
-    callback(cmd, server) {
-      const arg: string = cmd[1]
-      const parsedArg: boolean|undefined = ManifoldTerminal.parseCommandArgBool(arg);
-
-      if (typeof parsedArg === "boolean") {
-        server.config.endRoomNoHostSwap = parsedArg;
-        console.log(`noHostSwap is now ${arg}.`);
-      } else if (arg === undefined) {
-        console.log(`"${arg}" is not a valid argument. Please use "on" or "off", or alternatively "true" or "false".`);
-      }
-    },
+    aliases: ['roompassword'],
   },
   savechatlog: {
     usage: 'savechatlog',
@@ -170,11 +154,12 @@ const availableCommands: Record<string, TerminalCommand> = {
   close: {
     usage: 'close',
     description: 'Close the server.',
-    callback: function () {
+    callback: function (cmd, server) {
       console.log('Closing...');
+      server.saveChatLog();
       process.exit(0);
     },
-    aliases: ["exit"]
+    aliases: ['exit'],
   },
   help: {
     usage: 'help',
@@ -232,20 +217,19 @@ export default class ManifoldTerminal {
   }
 
   getAvailableCommand(cmd: string): TerminalCommand | undefined {
-    const commandKey = Object.keys(availableCommands).find(command =>
-      command === cmd || (availableCommands[command]?.aliases && availableCommands[command]?.aliases?.includes(cmd))
+    const commandKey = Object.keys(availableCommands).find(
+      (command) =>
+        command === cmd || (availableCommands[command]?.aliases && availableCommands[command]?.aliases?.includes(cmd)),
     );
     return commandKey ? availableCommands[commandKey] : undefined;
   }
 
-  static parseCommandArgBool(arg: string): boolean|undefined {
-    const parsedArg: string|undefined = arg?.trim?.().toLowerCase?.()
-    if (parsedArg === "true" || parsedArg === "on") {
-      return true
-    }
-    if (parsedArg === "false" || parsedArg === "off") {
-      return false
-    }
+  static parseCommandArgBool(arg: string): boolean | undefined {
+    const parsedArg: string | undefined = arg?.trim().toLowerCase();
+
+    if (parsedArg === 'true' || parsedArg === 'on') return true;
+    if (parsedArg === 'false' || parsedArg === 'off') return false;
+
     return undefined;
   }
 

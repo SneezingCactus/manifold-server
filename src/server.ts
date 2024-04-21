@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'node:http';
+import https from 'node:https';
 import socketIO from 'socket.io';
 import fs from 'fs';
 
@@ -22,7 +23,7 @@ const ratelimitMessages: Record<string, string> = {
 export default class ManifoldServer {
   public config;
 
-  public server: http.Server;
+  public server: http.Server | https.Server;
   public expressApp: express.Application;
   public io: socketIO.Server;
 
@@ -69,7 +70,22 @@ export default class ManifoldServer {
 
     // init http server and metadata endpoint
     this.expressApp = express();
-    this.server = http.createServer(this.expressApp);
+    if (this.config.useHttps) {
+      if (!fs.existsSync('server-key.pem') || !fs.existsSync('server-cert.pem')) {
+        console.log('HTTPS certificate files missing. Cannot start server.');
+        process.exit(0);
+      }
+
+      this.server = https.createServer(
+        {
+          key: fs.readFileSync('server-key.pem'),
+          cert: fs.readFileSync('server-cert.pem'),
+        },
+        this.expressApp,
+      );
+    } else {
+      this.server = http.createServer(this.expressApp);
+    }
 
     this.expressApp.use(
       cors({
@@ -132,7 +148,7 @@ export default class ManifoldServer {
         // join ratelimit check
         if (this.processRatelimit(socket, 'joining')) return;
 
-        // name duplicate check
+        // username duplicate check
         if (config.restrictions.usernames.noDuplicates) {
           for (const player of this.playerInfo) {
             if (!player) continue;
@@ -150,8 +166,38 @@ export default class ManifoldServer {
           return;
         }
 
+        // empty username check
         if (config.restrictions.usernames.noEmptyNames && !playerData.userName) {
           socket.emit(OUT.ERROR_MESSAGE, 'username_empty');
+          return;
+        }
+
+        // username regex check
+        if (config.restrictions.usernames.disallowRegex.test(playerData.userName)) {
+          socket.emit(OUT.ERROR_MESSAGE, 'username_invalid');
+          return;
+        }
+
+        // min level check
+        if (this.config.restrictions.levels.minLevel > 0 && playerData.guest) {
+          socket.emit(OUT.ERROR_MESSAGE, 'guests_not_allowed');
+          return;
+        }
+
+        if (playerData.level < this.config.restrictions.levels.minLevel) {
+          socket.emit(OUT.ERROR_MESSAGE, 'players_xp_too_low');
+          return;
+        }
+
+        // max level check
+        if (playerData.level > this.config.restrictions.levels.maxLevel) {
+          socket.emit(OUT.ERROR_MESSAGE, 'players_xp_too_high');
+          return;
+        }
+
+        // numeric level check
+        if (this.config.restrictions.levels.onlyAllowNumbers && /[^0-9]/.test(playerData.level)) {
+          socket.emit(OUT.ERROR_MESSAGE, 'player_xp_invalid');
           return;
         }
 
@@ -184,7 +230,7 @@ export default class ManifoldServer {
           userName: playerData.userName,
           guest: playerData.guest,
           team: this.gameSettings.tl ? 0 : 1,
-          level: playerData.level,
+          level: this.config.restrictions.levels.censorLevels ? '-' : playerData.level,
           ready: false,
           tabbed: false,
           avatar: playerData.avatar,
@@ -270,14 +316,14 @@ export default class ManifoldServer {
     }
   }
 
-  assertPlayerIsHost(playerId: number, shouldErrormessage: boolean = true) {
-    if (playerId !== this.hostId) {
-      if (shouldErrormessage) {
-        this.playerSockets[playerId].emit(OUT.ERROR_MESSAGE, 'not_hosting');
-      }
-      return false;
+  assertPlayerIsHost(playerId: number, shouldErrorMessage: boolean = true): boolean {
+    if (playerId == this.hostId) return true;
+
+    if (shouldErrorMessage) {
+      this.playerSockets[playerId].emit(OUT.ERROR_MESSAGE, 'not_hosting');
     }
-    return true;
+
+    return false;
   }
 
   logChatMessage(content: string) {
@@ -343,6 +389,9 @@ export default class ManifoldServer {
     socket.on(IN.CHAT_MESSAGE, (data) => {
       if (this.processRatelimit(socket, 'chatting')) return;
 
+      // limit message length
+      data.message = data.message.slice(0, this.config.restrictions.maxChatMessageLength);
+
       // send chat message to everyone
       this.io.to('main').emit(OUT.CHAT_MESSAGE, socket.data.bonkId, data.message);
 
@@ -354,8 +403,6 @@ export default class ManifoldServer {
     socket.on(IN.SET_READY, (data) => {
       if (this.processRatelimit(socket, 'readying')) return;
       if (typeof data.ready !== 'boolean') return;
-
-      this.playerInfo[socket.data.bonkId].ready = data.ready;
 
       this.playerInfo[socket.data.bonkId].ready = data.ready;
 
@@ -542,15 +589,8 @@ export default class ManifoldServer {
       this.io.to('main').emit(OUT.SEND_COUNTDOWN_ABORTED);
     });
 
-    socket.on(IN.NO_HOST_SWAP, () => {
-      // Idealy this should be settable through console aswell
-      if (!this.assertPlayerIsHost(socket.data.bonkId)) return;
-
-      this.config.endRoomNoHostSwap = true;
-    });
-
+    // (unhandled) 50: NO_HOST_SWAP
     // (unhandled) 52: CHANGE_ROOM_NAME
-
     // (unhandled) 53: CHANGE_ROOM_PASSWORD
 
     /* #endregion HOST ACTIONS */
@@ -594,18 +634,10 @@ export default class ManifoldServer {
       // this is the amount of game ticks (bonk runs at 30tps) at which the player left
       const tickCount = Math.round((Date.now() - this.gameStartTime) / (1000 / 30));
 
-      if (
-        (this.config.autoAssignHost || this.config.endRoomNoHostSwap) &&
-        this.assertPlayerIsHost(socket.data.bonkId, false)
-      ) {
+      if (this.config.autoAssignHost && this.assertPlayerIsHost(socket.data.bonkId, false)) {
         let newHostId = -1;
 
-        if (this.config.endRoomNoHostSwap) {
-          this.logChatMessage(`* ${leavingPlayerName} left the game and closed the room."`); // (todo) we need to trigger this actual message in game instead of logging it, this is done by making the new host -1? for now we just exit the process
-          process.exit(0);
-        }
-
-        newHostId = this.playerSockets.findIndex((i) => i);
+        newHostId = this.playerSockets.findIndex((i) => i && this.hostId != i.data.bonkId);
 
         // log disconnect message
         if (newHostId == -1) {

@@ -4,9 +4,42 @@ export interface BanList {
 }
 
 export interface UsernameRestrictions {
+  /**
+   * If `true`, players trying to join with a username that someone in the room already has will not be allowed to join.
+   */
   noDuplicates: boolean;
+  /**
+   * If `true`, players with completely empty usernames will not be allowed to join.
+   */
   noEmptyNames: boolean;
+  /**
+   * Maximum length that a player's username can have.
+   */
   maxLength: number;
+  /**
+   * Players whose username matches this regular expression will not be allowed to join.
+   */
+  disallowRegex: RegExp;
+}
+
+export interface LevelRestrictions {
+  /**
+   * Minimum level required to join. Only players with levels above this number will be able to join.
+   */
+  minLevel: number;
+  /**
+   * Maximum level required to join. Only players with levels below this number will be able to join.
+   */
+  maxLevel: number;
+  /**
+   * If `true`, it will only allow levels that contain only numbers (by making some modifications to the client,
+   * people may be able to join with levels that have text on them, which is why this setting exists)
+   */
+  onlyAllowNumbers: boolean;
+  /**
+   * If `true`, the level of every player in the room will be hidden, replaced with a '-'.
+   */
+  censorLevels: boolean;
 }
 
 export interface RatelimitRestrictions {
@@ -52,7 +85,22 @@ export interface RatelimitRestrictions {
 }
 
 export interface ConfigRestrictions {
+  /**
+   * Maximum length for chat messages. Messages that go beyond this limit will be truncated.
+   */
+  maxChatMessageLength: number;
+
+  /**
+   * Restrictions for player usernames.
+   */
   usernames: UsernameRestrictions;
+
+  /**
+   * Restrictions for player levels. Keep in mind that levels can be easily spoofed as Manifold cannot check the
+   * validity of a player's level. Therefore, people may spoof their levels to bypass min/max level restrictions,
+   * show a ridiculously high number or show a piece of text in place of the level.
+   */
+  levels: LevelRestrictions;
 
   /**
    * This section determines how certain actions must be ratelimited.
@@ -71,6 +119,19 @@ export type Config = {
    * Port where the server will be hosted.
    */
   port: number;
+
+  /**
+   * If `true`, the server will be hosted with HTTPS. This is necessary
+   * for hosting a server that is meant to be accessible outside of a local
+   * network, whether it be a server you host in your computer, or a server
+   * hosted on a cloud service that doesn't offer a built in HTTPS proxy.
+   *
+   * Using the server with HTTPS requires you to get SSL/TLS certificates
+   * for the domain you're hosting the server on, and store the key and cert
+   * files as "server-key.pem" and "server-cert.pem" in the root folder of
+   * the server.
+   */
+  useHttps: boolean;
 
   /**
    * Room name used by the server upon startup. The room name can later be
@@ -103,13 +164,7 @@ export type Config = {
   autoAssignHost: boolean;
 
   /**
-   * This is quite different to autoAssignHost, if this is enabled: 
-   * It closes the room when the host leaves.
-   */
-  endRoomNoHostSwap: boolean;
-
-  /**
-   * Timestamp format used for chatlogs.
+   * Timestamp format used for chat logs.
    */
   timeStampFormat: string;
 
@@ -170,7 +225,7 @@ declare interface GameSettings {
   /**
    * The game type.
    * Game types are internally represented by an ID:
-   * 
+   *
    * - 1 represents a mode where the game cycles through maps until the rounds played meet the number of maps. If a player has won, the game ends.
    * - 2 represents a mode where a player needs to win a certain number of rounds, decided by "wl". Once the required rounds are won, the game ends.
    */
@@ -178,8 +233,8 @@ declare interface GameSettings {
 }
 
 /**
-* Skin shape ids for avatar layers
-*/
+ * Skin shape ids for avatar layers
+ */
 export enum eAvatarShape { // Idealy large enums like this should be moved to another file
   Alien1,
   Alien2,
@@ -295,64 +350,61 @@ export enum eAvatarShape { // Idealy large enums like this should be moved to an
   Whisp8,
   Whisp9,
   Whisp10,
-  Whisp11
+  Whisp11,
 }
 
-export interface AvatarLayer { 
+export interface AvatarLayer {
   /**
-  * The shape id
-  * 
-  * Value minimum is 1 and maximum 115 otherwise it will be reverted back to 1
-  */
+   * The shape id
+   *
+   * Value minimum is 1 and maximum 115 otherwise it will be reverted back to 1
+   */
   id: eAvatarShape;
   /**
-  * The scale of the shape 
-  * 
-  * Value minimum is -9999 and maximum 9999 otherwise it will be reverted back to 0 
-  */
+   * The scale of the shape
+   *
+   * Value minimum is -9999 and maximum 9999 otherwise it will be reverted back to 0
+   */
   scale: number;
   /**
-  * The angle of the shape in degrees 
-  */
+   * The angle of the shape in degrees
+   */
   angle: number;
   /**
-  * x position of the shape 
-  */
+   * x position of the shape
+   */
   x: number;
   /**
-  * y position of the shape 
-  */
+   * y position of the shape
+   */
   y: number;
   /**
-  * Whether to flip the skin horizontally (x) 
-  */
+   * Whether to flip the skin horizontally (x)
+   */
   flipX: boolean;
   /**
-  * Whether to flip the skin vertically (y) 
-  */
+   * Whether to flip the skin vertically (y)
+   */
   flipY: number;
   /**
-  * The shape colour
-  * 
-  * Value minimum is 0 and maximum 16777215 otherwise it will be reverted back to 0 
-  */
+   * The shape colour
+   *
+   * Value minimum is 0 and maximum 16777215 otherwise it will be reverted back to 0
+   */
   color: number;
 }
 
 export interface Avatar {
   /**
-  * The different "layers" of shapes on the skin
-  * For a skin to be usable this must not be over 15 layers
-  */
-  layers: (AvatarLayer|undefined)[];
+   * The different "layers" of shapes on the skin.
+   * For a skin to be usable this must not be over 15 layers.
+   */
+  layers: (AvatarLayer | undefined)[];
   /**
-  * Stands for "background colour"
-  * 
-  * The background colour of the skin
-  */
+   * The background colour of the skin.
+   */
   bc: number;
 }
-
 
 export interface Player {
   /**
