@@ -1,3 +1,5 @@
+import ManifoldServer from './server';
+
 export interface BanList {
   addresses: string[];
   usernames: string[];
@@ -447,4 +449,11 @@ export interface Player {
    * ID remains unused.
    */
   peerId: string;
+}
+
+export interface TerminalCommand {
+  usage: string;
+  description: string;
+  callback: (cmd: string[], server: ManifoldServer) => void;
+  aliases?: string[];
 }

@@ -1,53 +1,35 @@
 import { createInterface, Interface } from 'node:readline';
 import ManifoldServer from './server';
-import * as OUT from './outPacketIds';
 import fs from 'fs';
 import columnify from 'columnify';
-import { Config } from './types';
-
-interface TerminalCommand {
-  usage: string;
-  description: string;
-  callback: (cmd: string[], server: ManifoldServer) => void;
-  aliases?: string[];
-}
-
-function getPlayerId(cmd: string, server: ManifoldServer): number {
-  if (!/[^0-9]+/.test(cmd) && server.playerSockets[parseInt(cmd)]) {
-    return parseInt(cmd);
-  } else {
-    for (let i = 0; i < server.playerInfo.length; i++) {
-      if (server.playerInfo[i] && server.playerInfo[i].userName == cmd) return i;
-    }
-  }
-
-  return -1;
-}
+import chalk from 'chalk';
+import wrap from 'word-wrap';
+import { TerminalCommand } from './types';
 
 const availableCommands: Record<string, TerminalCommand> = {
   host: {
-    usage: 'host [username or id, leave blank to make no one host]',
+    usage:
+      'host [username or id, leave blank to remove host permissions from the current host without assigning a new one]',
     description: 'Give host privileges to someone in the room.',
     callback: function (cmd, server) {
-      const id = getPlayerId(cmd[1], server);
+      const id = ManifoldTerminal.getPlayerId(cmd[1], server);
 
       if (cmd[1] && id == -1) {
-        console.log(`${cmd[1]} is not a valid player name or id.`);
+        ManifoldTerminal.consoleLog(`${cmd[1]} is not a valid player name or id.`);
         return;
       }
 
-      server.hostId = id;
+      if (id == -1 && server.hostId == -1) {
+        ManifoldTerminal.consoleLog('There is no game host in the server to remove privileges from!');
+      }
 
-      // send host change packet to everyone
-      server.io.to('main').emit(OUT.TRANSFER_HOST, { oldHost: -1, newHost: server.hostId });
+      const oldHostId = server.hostId;
+      server.transferHost(id);
 
-      // log host transfer message
       if (id == -1) {
-        server.logChatMessage('* The game no longer has a host');
-        console.log('The game no longer has a host.');
+        ManifoldTerminal.consoleLog(`Removed host privileges from ${server.playerInfo[oldHostId].userName}.`);
       } else {
-        server.logChatMessage(`* ${server.playerInfo[server.hostId].userName} is now the game host`);
-        console.log(`${server.playerInfo[id].userName} (id ${id}) is now the game host.`);
+        ManifoldTerminal.consoleLog(`${server.playerInfo[id].userName} (id ${id}) is now the game host.`);
       }
     },
   },
@@ -55,16 +37,16 @@ const availableCommands: Record<string, TerminalCommand> = {
     usage: 'ban [username]',
     description: 'Ban a player currently in the room.',
     callback(cmd, server) {
-      const id = getPlayerId(cmd[1], server);
+      const id = ManifoldTerminal.getPlayerId(cmd[1], server);
 
       if (id == -1) {
-        console.log(`${cmd[1]} is not a valid player name or id.`);
+        ManifoldTerminal.consoleLog(`${cmd[1]} is not a valid player name or id.`);
         return;
       }
 
       server.banPlayer(id);
 
-      console.log('Banned.');
+      ManifoldTerminal.consoleLog('Banned.');
     },
   },
   unban: {
@@ -74,7 +56,7 @@ const availableCommands: Record<string, TerminalCommand> = {
       const index = server.banList.usernames.indexOf(cmd[1]);
 
       if (index == -1) {
-        console.log(`${cmd[1]} is not in the ban list.`);
+        ManifoldTerminal.consoleLog(`${cmd[1]} is not in the ban list.`);
         return;
       }
 
@@ -91,7 +73,7 @@ const availableCommands: Record<string, TerminalCommand> = {
     description: 'Show a list of all the players in the room.',
     callback(cmd, server) {
       if (server.playerAmount == 0) {
-        console.log("There isn't anyone connected to the server!");
+        ManifoldTerminal.consoleLog("There isn't anyone connected to the server!");
         return;
       }
 
@@ -112,7 +94,7 @@ const availableCommands: Record<string, TerminalCommand> = {
         });
       }
 
-      console.log(
+      ManifoldTerminal.consoleLog(
         columnify(playerList, {
           columnSplitter: '   ',
           maxWidth: 20,
@@ -126,7 +108,7 @@ const availableCommands: Record<string, TerminalCommand> = {
       "Change the room's name. The new name is not permanent and will change back to roomNameOnStartup when the server is restarted. Remember to use quotes if the room name you want to use has spaces.",
     callback(cmd, server) {
       server.roomName = cmd[1] ? cmd[1] : server.config.roomNameOnStartup;
-      console.log(`The room name is now "${server.roomName}".`);
+      ManifoldTerminal.consoleLog(`The room name is now "${server.roomName}".`);
     },
   },
   roompass: {
@@ -136,10 +118,10 @@ const availableCommands: Record<string, TerminalCommand> = {
     callback(cmd, server) {
       if (cmd[1]) {
         server.password = cmd[1];
-        console.log(`The room password is now "${server.password}".`);
+        ManifoldTerminal.consoleLog(`The room password is now "${server.password}".`);
       } else {
         server.password = null;
-        console.log(`The room password has been cleared.`);
+        ManifoldTerminal.consoleLog(`The room password has been cleared.`);
       }
     },
     aliases: ['roompassword'],
@@ -151,11 +133,59 @@ const availableCommands: Record<string, TerminalCommand> = {
       server.saveChatLog();
     },
   },
+  scheduledclose: {
+    usage: 'scheduledclose [time until force-stop in minutes (optional)]',
+    description:
+      'Remove host permissions from the current game host, disallow new joins, and stop the server once everyone leaves on their own. You can optionally set a timer to force-stop the server after a certain amount of time.',
+    callback(cmd, server) {
+      if (server.playerAmount == 0) {
+        ManifoldTerminal.consoleLog(
+          'Scheduled closing is meant to be used when there are people connected to the server! Did you mean to stop the server by using the command "close"?',
+        );
+        return;
+      }
+
+      if (server.closed) {
+        ManifoldTerminal.consoleLog('A scheduled close is already taking place!');
+        return;
+      }
+
+      const forceStopTime = server.scheduledClose(parseFloat(cmd[1]));
+
+      if (forceStopTime) {
+        ManifoldTerminal.consoleLog(
+          `The server has been closed. Player entry is now prohibited, and the server will shut down ${forceStopTime}, or as soon as everyone leaves the room.`,
+        );
+      } else {
+        ManifoldTerminal.consoleLog(
+          'The server has been closed. Player entry is now prohibited, and as soon as everyone leaves the room, the server will shut down.',
+        );
+      }
+    },
+    aliases: ['schclose'],
+  },
+  abortscheduledclose: {
+    usage: 'abortscheduledclose',
+    description: 'Abort a scheduled close, and re-open the server.',
+    callback(cmd, server) {
+      if (!server.closed) {
+        ManifoldTerminal.consoleLog("The server isn't currently scheduled to be closed.");
+        return;
+      }
+
+      server.abortScheduledClose();
+
+      ManifoldTerminal.consoleLog(
+        'The server has been re-opened! Player entry is no longer prohibited and the server will no longer automatically shut down.',
+      );
+    },
+    aliases: ['abortschclose'],
+  },
   close: {
     usage: 'close',
     description: 'Close the server.',
     callback: function (cmd, server) {
-      console.log('Closing...');
+      ManifoldTerminal.consoleLog('Closing...');
       server.saveChatLog();
       process.exit(0);
     },
@@ -166,9 +196,16 @@ const availableCommands: Record<string, TerminalCommand> = {
     description: 'Show this list of commands.',
     callback: function () {
       for (const command in availableCommands) {
-        console.log('');
-        console.log(availableCommands[command].usage);
-        console.log(availableCommands[command].description);
+        const commandMetadata = availableCommands[command];
+
+        ManifoldTerminal.consoleLog('');
+        ManifoldTerminal.consoleLog(chalk.underline(command));
+        ManifoldTerminal.consoleLog(' - Usage: ' + commandMetadata.usage);
+        if (commandMetadata.aliases) ManifoldTerminal.consoleLog(' - Aliases: ' + commandMetadata.aliases.join(', '));
+        ManifoldTerminal.consoleLog('');
+        ManifoldTerminal.consoleLog(commandMetadata.description, {
+          indent: '   ',
+        });
       }
     },
   },
@@ -188,15 +225,15 @@ export default class ManifoldTerminal {
   }
 
   async start() {
-    console.log(
+    ManifoldTerminal.consoleLog(
       [
         `| Manifold Server v${require('../package.json').version}`,
         `| Live at port ${this.server.config.port}`,
         '|',
-        '| Type "help" to show a list of commands.',
-        '',
+        '| Type "help" to show a list of commands.\n',
       ].join('\n'),
     );
+    ManifoldTerminal.consoleLog('');
 
     while (true) {
       const userInput = await new Promise<string>((resolve) => {
@@ -209,10 +246,10 @@ export default class ManifoldTerminal {
       if (command !== undefined) {
         command.callback(cmdArr, this.server);
       } else {
-        console.log(`${cmdArr[0]} is not a valid command.`);
+        ManifoldTerminal.consoleLog(`${cmdArr[0]} is not a valid command.`);
       }
 
-      console.log('');
+      ManifoldTerminal.consoleLog('');
     }
   }
 
@@ -222,6 +259,17 @@ export default class ManifoldTerminal {
         command === cmd || (availableCommands[command]?.aliases && availableCommands[command]?.aliases?.includes(cmd)),
     );
     return commandKey ? availableCommands[commandKey] : undefined;
+  }
+
+  static consoleLog(message: string, options?: wrap.IOptions) {
+    console.log(
+      wrap(message, {
+        width: Math.min(80, process.stdout.columns) - (options?.indent?.length ?? 0),
+        indent: '',
+        trim: true,
+        ...options,
+      }),
+    );
   }
 
   static parseCommandArgBool(arg: string): boolean | undefined {
@@ -273,5 +321,17 @@ export default class ManifoldTerminal {
     }
 
     return result;
+  }
+
+  static getPlayerId(cmd: string, server: ManifoldServer): number {
+    if (!/[^0-9]+/.test(cmd) && server.playerSockets[parseInt(cmd)]) {
+      return parseInt(cmd);
+    } else {
+      for (let i = 0; i < server.playerInfo.length; i++) {
+        if (server.playerInfo[i] && server.playerInfo[i].userName == cmd) return i;
+      }
+    }
+
+    return -1;
   }
 }

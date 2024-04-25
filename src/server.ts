@@ -29,35 +29,28 @@ export default class ManifoldServer {
 
   public terminal: ManifoldTerminal;
 
-  public playerInfo: Player[];
-  public playerSockets: socketIO.Socket[];
-  public ratelimits: Record<string, Record<string, number>>;
+  public playerInfo: Player[] = [];
+  public playerSockets: socketIO.Socket[] = [];
+  public ratelimits: Record<string, Record<string, number>> = {};
   public banList: BanList;
-  public chatLog: string;
+  public chatLog: string = '';
 
-  public hostId: number;
-  public gameStartTime: number;
+  public hostId: number = -1;
+  public gameStartTime: number = 0;
   public gameSettings: GameSettings;
 
   public roomName: string;
   public password: string | null;
-  public playerAmount: number;
+  public playerAmount: number = 0;
+  public closed: boolean = false;
+  public scheduledForceStopTimeout?: NodeJS.Timeout;
 
   constructor(config: Config) {
     this.config = config;
 
-    this.playerInfo = [];
-    this.playerSockets = [];
-    this.ratelimits = {};
-    this.chatLog = '';
-
-    this.hostId = -1;
-    this.gameStartTime = 0;
-
     this.gameSettings = this.config.defaultGameSettings;
     this.roomName = this.config.roomNameOnStartup;
     this.password = this.config.roomPasswordOnStartup;
-    this.playerAmount = 0;
 
     this.terminal = new ManifoldTerminal(this);
 
@@ -104,6 +97,7 @@ export default class ManifoldServer {
         maxplayers: this.config.maxPlayers,
         mode_ga: this.gameSettings.ga,
         mode_mo: this.gameSettings.mo,
+        closed: this.closed,
       });
     });
 
@@ -135,6 +129,12 @@ export default class ManifoldServer {
       // new player joins the room and sends this packet
       socket.on(IN.JOIN_REQUEST, (playerData) => {
         /* #region JOIN RESTRICTIONS */
+
+        // server closed check
+        if (this.closed) {
+          socket.emit(OUT.ERROR_MESSAGE, 'closed');
+          return;
+        }
 
         // banned check
         if (this.banList.addresses.includes(socket.handshake.address)) {
@@ -291,22 +291,27 @@ export default class ManifoldServer {
 
     socketRatelimits[actionType] ??= 0;
 
+    // if this is the first recorded instance of the action within the timeframe, start a timer that resets the
+    // action recorder after the timeframe passes (unless it reaches the ratelimit within the timeframe)
     if (socketRatelimits[actionType] == 0) {
       setTimeout(() => {
-        if (socketRatelimits[actionType] >= ratelimitOptions.amount) return;
-
-        socketRatelimits[actionType] = 0;
+        if (socketRatelimits[actionType] < ratelimitOptions.amount) {
+          socketRatelimits[actionType] = 0;
+        }
       }, ratelimitOptions.timeframe * 1000);
     }
 
     socketRatelimits[actionType]++;
 
+    // if the ratelimit is reached, start a timer that resets the action recorder after the restore time passes
     if (socketRatelimits[actionType] == ratelimitOptions.amount) {
       setTimeout(() => {
         socketRatelimits[actionType] = 0;
       }, ratelimitOptions.restore * 1000);
     }
 
+    // if the ratelimit has been reached, send a ratelimit error message to the socket and return true, otherwise just
+    // return false
     if (socketRatelimits[actionType] >= ratelimitOptions.amount) {
       socket.emit(OUT.ERROR_MESSAGE, ratelimitMessages[actionType]);
 
@@ -330,10 +335,39 @@ export default class ManifoldServer {
     this.chatLog += `[${moment().format(this.config.timeStampFormat)}] ${content}\n`;
   }
 
+  sendChatStatusMessage(message: string) {
+    this.io.to('main').emit(OUT.MANIFOLD_CHAT_STATUS, message, '#b53030');
+    this.logChatMessage(message);
+  }
+
   saveChatLog() {
+    if (this.chatLog == '') return;
+
     if (!fs.existsSync('./chatlogs')) fs.mkdirSync('./chatlogs');
     fs.writeFileSync(`./chatlogs/${moment().format(this.config.timeStampFormat)}.txt`, this.chatLog);
     this.chatLog = '';
+  }
+
+  transferHost(id: number) {
+    const oldHostId = this.hostId;
+    this.hostId = id;
+
+    // send host change packet to everyone
+    this.io.to('main').emit(OUT.TRANSFER_HOST, { oldHost: -1, newHost: this.hostId });
+
+    // log host transfer message
+    if (id == -1) {
+      this.io.to('main').emit(OUT.RETURN_TO_LOBBY);
+      this.sendChatStatusMessage(
+        `* ${this.playerInfo[oldHostId].userName} had their host privileges taken away by the server, making the room hostless.`,
+      );
+    } else if (oldHostId == -1) {
+      this.sendChatStatusMessage(`* ${this.playerInfo[id].userName} is now the game host.`);
+    } else {
+      this.sendChatStatusMessage(
+        `* Server has taken host privileges from ${this.playerInfo[oldHostId].userName}, and ${this.playerInfo[id].userName} is now the game host.`,
+      );
+    }
   }
 
   banPlayer(id: number) {
@@ -351,6 +385,53 @@ export default class ManifoldServer {
   kickPlayer(id: number) {
     this.logChatMessage(`${this.playerInfo[id].userName} was kicked from the server`);
     this.playerSockets[id].disconnect();
+  }
+
+  scheduledClose(timeUntilForceStop?: number): string | undefined {
+    this.closed = true;
+
+    this.hostId = -1;
+    this.io.to('main').emit(OUT.TRANSFER_HOST, { oldHost: -1, newHost: -1 });
+
+    this.io.to('main').emit(OUT.RETURN_TO_LOBBY);
+
+    if (timeUntilForceStop) {
+      const forceStopTime = moment().add(timeUntilForceStop, 'minutes');
+
+      this.scheduledForceStopTimeout = setTimeout(() => {
+        console.log('Scheduled close time limit reached. Closing...');
+        this.saveChatLog();
+        process.exit(0);
+      }, timeUntilForceStop * 60000);
+
+      this.sendChatStatusMessage(
+        `* The server has been closed. Player entry is now prohibited, and the server will shut down ${forceStopTime.fromNow()}, or as soon as everyone leaves the room.`,
+      );
+
+      return forceStopTime.fromNow();
+    } else {
+      this.sendChatStatusMessage(
+        '* The server has been closed. Player entry is now prohibited, and as soon as everyone leaves the room, the server will shut down.',
+      );
+    }
+  }
+
+  abortScheduledClose() {
+    this.closed = false;
+
+    clearTimeout(this.scheduledForceStopTimeout);
+
+    this.sendChatStatusMessage(
+      '* The server has been re-opened! Player entry is no longer prohibited and the server will no longer automatically shut down.',
+    );
+
+    if (this.config.autoAssignHost) {
+      const newHostId = this.playerSockets.findIndex((i) => i && this.hostId != i.data.bonkId);
+
+      if (newHostId != -1) {
+        this.transferHost(newHostId);
+      }
+    }
   }
 
   registerSocketEvents(socket: socketIO.Socket) {
@@ -635,9 +716,7 @@ export default class ManifoldServer {
       const tickCount = Math.round((Date.now() - this.gameStartTime) / (1000 / 30));
 
       if (this.config.autoAssignHost && this.assertPlayerIsHost(socket.data.bonkId, false)) {
-        let newHostId = -1;
-
-        newHostId = this.playerSockets.findIndex((i) => i && this.hostId != i.data.bonkId);
+        const newHostId = this.playerSockets.findIndex((i) => i && this.hostId != i.data.bonkId);
 
         // log disconnect message
         if (newHostId == -1) {
@@ -663,6 +742,12 @@ export default class ManifoldServer {
       delete this.playerSockets[socket.data.bonkId];
 
       this.playerAmount--;
+
+      if (this.playerAmount <= 0 && this.closed) {
+        console.log('Everyone has left the room. Closing...');
+        this.saveChatLog();
+        process.exit(0);
+      }
     });
   }
 }

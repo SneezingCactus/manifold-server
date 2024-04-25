@@ -47,5 +47,6 @@ export const SAVE_REPLAY = '40';
 
 export const REPLY_TIMESYNC = '23';
 export const ERROR_MESSAGE = '16';
+export const MANIFOLD_CHAT_STATUS = 'mfold_chatstatus';
 
 /* #endregion MISC */
