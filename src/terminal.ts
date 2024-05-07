@@ -108,20 +108,20 @@ const availableCommands: Record<string, TerminalCommand> = {
       "Change the room's name. The new name is not permanent and will change back to roomNameOnStartup when the server is restarted. Remember to use quotes if the room name you want to use has spaces.",
     callback(cmd, server) {
       server.roomName = cmd[1] ? cmd[1] : server.config.roomNameOnStartup;
-      ManifoldTerminal.consoleLog(`The room name is now "${server.roomName}".`);
+      ManifoldTerminal.consoleLog(`The room's name is now "${server.roomName}".`);
     },
   },
   roompass: {
     usage: 'roompass [new password, leave blank to clear the password]',
     description:
-      "Change the room's name. The new password is not permanent and will change back to roomPasswordOnStartup when the server is restarted. Remember to use quotes if the password you want to use has spaces.",
+      "Change the room's password. The new password is not permanent and will change back to roomPasswordOnStartup when the server is restarted. Remember to use quotes if the password you want to use has spaces.",
     callback(cmd, server) {
       if (cmd[1]) {
         server.password = cmd[1];
-        ManifoldTerminal.consoleLog(`The room password is now "${server.password}".`);
+        ManifoldTerminal.consoleLog(`The room's password is now "${server.password}".`);
       } else {
         server.password = null;
-        ManifoldTerminal.consoleLog(`The room password has been cleared.`);
+        ManifoldTerminal.consoleLog(`The room's password has been cleared.`);
       }
     },
     aliases: ['roompassword'],
@@ -200,8 +200,8 @@ const availableCommands: Record<string, TerminalCommand> = {
 
         ManifoldTerminal.consoleLog('');
         ManifoldTerminal.consoleLog(chalk.underline(command));
-        ManifoldTerminal.consoleLog(' - Usage: ' + commandMetadata.usage);
-        if (commandMetadata.aliases) ManifoldTerminal.consoleLog(' - Aliases: ' + commandMetadata.aliases.join(', '));
+        ManifoldTerminal.consoleLog(` - Usage: ${commandMetadata.usage}`);
+        if (commandMetadata.aliases) ManifoldTerminal.consoleLog(` - Aliases: ${commandMetadata.aliases.join(', ')}`);
         ManifoldTerminal.consoleLog('');
         ManifoldTerminal.consoleLog(commandMetadata.description, {
           indent: '   ',
@@ -236,12 +236,10 @@ export default class ManifoldTerminal {
     ManifoldTerminal.consoleLog('');
 
     while (true) {
-      const userInput = await new Promise<string>((resolve) => {
-        this.readlineInterface.question('> ', resolve);
-      });
+      const userInput = await this.getUserInput();
 
       const cmdArr = ManifoldTerminal.parseCommand(userInput);
-      const command = this.getAvailableCommand(cmdArr[0]);
+      const command = ManifoldTerminal.getAvailableCommand(cmdArr[0]);
 
       if (command !== undefined) {
         command.callback(cmdArr, this.server);
@@ -253,7 +251,13 @@ export default class ManifoldTerminal {
     }
   }
 
-  getAvailableCommand(cmd: string): TerminalCommand | undefined {
+  private async getUserInput(): Promise<string> {
+    return new Promise<string>((resolve) => {
+      this.readlineInterface.question('> ', resolve);
+    });
+  }
+
+  static getAvailableCommand(cmd: string): TerminalCommand | undefined {
     const commandKey = Object.keys(availableCommands).find(
       (command) =>
         command === cmd || (availableCommands[command]?.aliases && availableCommands[command]?.aliases?.includes(cmd)),
